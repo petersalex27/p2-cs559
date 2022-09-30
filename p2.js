@@ -11,40 +11,94 @@ window.onload = function() {
         context.ellipse(cx, cy, d, d, 0, pi2zero ? PI : 0, pi2zero ? 0 : PI);
     const eqScale = (unitSz) => context.scale(unitSz, unitSz);
 
-    const waveBg = "#47388c";
-
-    function drawBg(period = 10, n = 1, color = [0x47, 0x38, 0x8c]) {
-        if (n === 0) return;
-
-        context.fillStyle = '#'.concat(color[0].toString(16).padStart(2, '0'),
-                                       color[1].toString(16).padStart(2, '0'),
-                                       color[2].toString(16).padStart(2, '0'));
-        context.save();
-
+    function drawBg(n = 1, degree = 10, maxH = 50, color = [0x47, 0x38, 0x8c], horizonColor = "#c6d5f1") {
+        // draw horizon
         context.beginPath();
-        context.moveTo(-width / period, 100);
-        for (let i = 0; i < period; ++i) {
-            context.quadraticCurveTo(width / period / 2, 50, width / period, 100);
-            context.translate(width * 2 / period, 0);
-            context.quadraticCurveTo(width / period / 2, 50, width / period, 100);
-            context.translate(width * 2 / period, 0);
-        }
-
-        context.restore();
-
-        context.lineTo(500, 500);
-        context.lineTo(0, 500);
-        context.closePath();
+        context.rect(0, 90, width, height);
+        context.fillStyle = horizonColor;
         context.fill();
 
         context.save();
-        context.translate(0, 50);
-        color = [color[0] + 0x10, color[1] + 0x10, color[2] + 0x10]
-        drawBg(period, n - 1, color);
+        context.translate(0, 150);
+
+        for (let N = 0; N < n; ++N) {
+            context.fillStyle = 'rgba('.concat(color[0].toString(10), ',', color[1].toString(10), ',',
+                color[2].toString(10), ',', '1.0', ')');
+            //const smoothness;
+            let yVals = [];
+            let xVals = [];
+            for (let i = 0; i < degree; ++i) {
+                yVals.push(Math.random() * maxH);  // gets y values
+                xVals.push(Math.random());
+            }
+            // get x values
+            let sum = 0;
+            for (let i = 0; i < xVals.length; ++i) sum += xVals[i];
+            for (let i = 0; i < xVals.length; ++i) xVals[i] = (xVals[i] / sum) * width;
+
+            context.beginPath();
+            context.moveTo(0, 0);
+            for (let i = 0; i < degree; ++i) {
+                context.lineTo(xVals[i], -yVals[i]);
+                context.translate(xVals[i], 0);
+            }
+            context.lineTo(0, height);
+            context.translate(-width, 0);
+            context.lineTo(0, height);
+            context.closePath();
+            context.fill();
+
+            context.translate(0, 100 / n);
+            let change = 0x60 / n;
+            let changeb = -0x40 / n;
+            color = [color[0] + change, color[1] + change, color[2] + changeb, 1.0];
+        }
         context.restore();
     }
 
-    drawBg(10, 4);
+    function drawBgWaves(period = 10, n = 1, color = [0x17, 0x38, 0x7c, 0.2]) {
+        let spacing = [];
+        for (let i = 0, z = height / 2 - 50; i < n; ++i) {
+            spacing.unshift(z / 1.5);
+            z /= 1.5;
+        }
+
+        context.save();
+        let origin = period;
+        period = period + n - 1;
+        for (let i = 0; i < n; i++) {
+            context.fillStyle = 'rgba('.concat(color[0].toString(10), ',',
+                color[1].toString(10), ',',
+                color[2].toString(10), ',',
+                color.length > 3 ? color[3].toString() : '1.0', ')');
+            context.save();
+
+            context.beginPath();
+            context.moveTo(-width / period, 100);
+            for (let i = 0; i < period; ++i) {
+                context.quadraticCurveTo(width / period / 2, 50 + (period - origin) * 8, width / period, 100);
+                context.translate(width * 2 / period, 0);
+                context.quadraticCurveTo(width / period / 2, 50 + (period - origin) * 8, width / period, 100);
+                context.translate(width * 2 / period, 0);
+            }
+
+            context.restore();
+
+            context.lineTo(500, 500);
+            context.lineTo(0, 500);
+            context.closePath();
+            context.fill();
+
+            context.translate(0, spacing.shift());
+            let change = 0x50 / n;
+            color = [color[0] + change, color[1] + change, color[2] + change, color.length > 3 ? color[3] : '1.0'];
+            period--;
+        }
+        context.restore();
+    }
+
+    drawBg(12, 10, 50);
+    drawBgWaves(10, 7);
 
     const octo = {
         // color arrays go index [len / 2] = midtone, index < [len / 2] = highlights, index > [len / 2] = shadows
@@ -208,9 +262,13 @@ window.onload = function() {
 
             for (let n = 0; n < 4; ++n) drawTentacle(n);
             context.restore();
-
+            context.restore();
+            context.restore();
         }
     }
 
     octo.drawBody();
+    context.translate(-width / 2, -45);
+    context.moveTo(0, 0);
+    drawBgWaves(10, 1, [0x87, 0x78, 0xcc, 0.5]);
 }
