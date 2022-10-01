@@ -1,6 +1,32 @@
 const PI = Math.PI;
 
 window.onload = function() {
+    window.requestAnimationFrame(draw);
+};
+
+let yVals = [];
+let xVals = [];
+
+const getFrames = () => Math.ceil(Math.random() * 60 + 60);
+
+let totFrames = [getFrames(), getFrames(), getFrames(), getFrames(), getFrames(), getFrames(), getFrames(), getFrames()];
+let framesLeft = structuredClone(totFrames);
+
+let goals = [newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal()];
+let currs = [newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal()];
+
+function newGoal() {
+    return [PI / (12 * Math.random() % 12),
+        PI / (12 * Math.random() % 12),
+        PI / (12 * Math.random() % 12),
+        PI / (12 * Math.random() % 12),
+        PI / (12 * Math.random() % 12),
+        PI / (12 * Math.random() % 12),
+        PI / (12 * Math.random() % 12),
+        PI / (12 * Math.random() % 12),];
+}
+
+function draw() {
     let canvas = document.getElementById("myCanvas");
     let context = canvas.getContext("2d");
     let width = 500;
@@ -24,17 +50,16 @@ window.onload = function() {
         for (let N = 0; N < n; ++N) {
             context.fillStyle = 'rgba('.concat(color[0].toString(10), ',', color[1].toString(10), ',',
                 color[2].toString(10), ',', '1.0', ')');
-            //const smoothness;
-            let yVals = [];
-            let xVals = [];
-            for (let i = 0; i < degree; ++i) {
-                yVals.push(Math.random() * maxH);  // gets y values
-                xVals.push(Math.random());
+            if (xVals.length == 0 || yVals.length == 0) {
+                for (let i = 0; i < degree; ++i) {
+                    yVals.push(Math.random() * maxH);  // gets y values
+                    xVals.push(Math.random());
+                }
+                // get x values
+                let sum = 0;
+                for (let i = 0; i < xVals.length; ++i) sum += xVals[i];
+                for (let i = 0; i < xVals.length; ++i) xVals[i] = (xVals[i] / sum) * width;
             }
-            // get x values
-            let sum = 0;
-            for (let i = 0; i < xVals.length; ++i) sum += xVals[i];
-            for (let i = 0; i < xVals.length; ++i) xVals[i] = (xVals[i] / sum) * width;
 
             context.beginPath();
             context.moveTo(0, 0);
@@ -75,9 +100,7 @@ window.onload = function() {
 
             context.beginPath();
             context.moveTo(-width / period, 100);
-            for (let i = 0; i < period; ++i) {
-                context.quadraticCurveTo(width / period / 2, 50 + (period - origin) * 8, width / period, 100);
-                context.translate(width * 2 / period, 0);
+            for (let j = 0; j < period; ++j) {
                 context.quadraticCurveTo(width / period / 2, 50 + (period - origin) * 8, width / period, 100);
                 context.translate(width * 2 / period, 0);
             }
@@ -88,6 +111,23 @@ window.onload = function() {
             context.lineTo(0, 500);
             context.closePath();
             context.fill();
+
+            context.save();
+            for (let t = 0; t < 10; ++t) {
+                context.save();
+                context.beginPath();
+                context.moveTo(-width / period, 100);
+                for (let j = 0; j < period; ++j) {
+                    context.quadraticCurveTo(width / period / 2, 50 + (period - origin) * 8, width / period, 100);
+                    context.translate(width * 2 / period, 0);
+                }
+
+                context.strokeStyle = "rgba(255, 255, 255, 0.5)";
+                context.stroke();
+                context.restore();
+                context.translate(0, spacing[0] / 10);
+            }
+            context.restore();
 
             context.translate(0, spacing.shift());
             let change = 0x50 / n;
@@ -140,6 +180,20 @@ window.onload = function() {
 
             }
 
+            let headRadius = 35;
+            let dx = headRadius * 3 / 4;
+
+            context.save();
+
+            context.translate(width / 2, height / 2);
+            context.fillStyle = this.colors.headLow;
+            drawTentacle(0, 12, [PI / 9], 20);
+            drawTentacle(1, 12, [PI / 3, PI / 9, PI / 12, -PI / 12, PI / 3, PI / 3], 20);
+            drawTentacle(3, 12, [PI / 8, PI / 7, -PI / 6], 20);
+            drawTentacle(2, 12, [-PI / 2, -PI / 3, PI / 12, -PI / 12, PI / 3, PI / 3], 20);
+
+            context.restore();
+
             // draw back part of head
             context.beginPath();
             context.fillStyle = this.colors.headLow;
@@ -151,7 +205,6 @@ window.onload = function() {
             context.fill();
 
             // set up head drawing
-            let headRadius = 35;
             context.save();                             // [a]
             context.translate(0, 35);
 
@@ -219,48 +272,64 @@ window.onload = function() {
             context.lineTo(0, 0);
             context.fill();
 
-            let dx = headRadius * 3 / 4;
-            const tentacleStartX = -headRadius + dx / 2, tentacleStartY = headRadius;
+            const tentacleStartX = -headRadius + dx * 1.5, tentacleStartY = -headRadius + 40;
             // draw tentacle
             context.save();                             // [a, b, c]
             context.fillStyle = this.colors.headMid;
             context.translate(tentacleStartX, tentacleStartY);
             context.rotate(Math.atan(headRadius / (headRadius * 3)));
 
-            function drawTentacle(n) {
+            function drawTentacle(n, segments = 10, rad = [PI / 9], len = 30) {
                 context.save();                         // [a, b, c, d]
 
+                if (0 == framesLeft[n]) {
+                    const f = getFrames();
+                    framesLeft[n] = f.valueOf();
+                    totFrames[n] = f.valueOf();
+                }
+                framesLeft[n] = framesLeft[n] - 1;
+
+                n = n % 4;
+                let radIdx = 0;
                 context.beginPath();
                 context.translate(dx * n, 0);
-                //const m = n + 1;
-                for (let i = 0; i <= 9; ++i) {
+                for (let i = 0; i < segments; ++i) {
+                    let shrink = 1 / segments;
                     // rotate segment
-                    context.translate(-dx / 2, 30);
-                    context.rotate(PI / 9);
-                    context.translate(dx / 2, -30);
-                    context.translate(-dx / 2, 30);
+                    context.translate(-dx / 2, len);
+                    context.rotate(
+                        currs[n][radIdx] +
+                        ((goals[n][radIdx] - currs[n][radIdx]) / totFrames[n]) * (totFrames[n] - framesLeft[n])
+                    );
+                    context.translate(dx / 2, -len);
+                    context.translate(-dx / 2, len);
                     context.save();                     // [a, b, c, d, e]
 
                     // draw segment
-                    let cx = -dx / 2, cy = 30, d = dx / 2, dD = dx / (2 + 0.1 * i);
+                    let cx = -dx / 2, cy = len, d = dx / 2, dD = dx / (2 + shrink * i);
                     eqScale(dD / d);
                     context.moveTo(0, 0);
                     halfCircle(0, 0, d, true);
-                    context.lineTo(0, 30);
+                    context.lineTo(0, len);
                     halfCircle(cx, cy, d, false);
                     context.lineTo(cx, 0);
                     context.closePath();
+                    context.stroke();
                     context.fill();
 
                     context.restore();
+                    radIdx += (goals[n].length / segments);
                     // context.ellipse(0, 0, 5, 5, 0, 0, 2 * PI);
-                    // context.stroke();
                 }
 
                 context.restore();
             }
 
-            for (let n = 0; n < 4; ++n) drawTentacle(n);
+
+            drawTentacle(0, 12);
+            drawTentacle(1, 12, [PI / 3, PI / 9, PI / 12, -PI / 12, PI / 3, PI / 3]);
+            drawTentacle(3, 12, [PI / 8, PI / 7, -PI / 6]);
+            drawTentacle(2, 12, [-PI / 2, -PI / 3, PI / 12, -PI / 12, PI / 3, PI / 3]);
             context.restore();
             context.restore();
             context.restore();
@@ -268,7 +337,11 @@ window.onload = function() {
     }
 
     octo.drawBody();
+    //context.save();
     context.translate(-width / 2, -45);
     context.moveTo(0, 0);
     drawBgWaves(10, 1, [0x87, 0x78, 0xcc, 0.5]);
+    context.translate(0, -height / 2 + 45);
+
+    window.requestAnimationFrame(draw);
 }
