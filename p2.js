@@ -7,6 +7,9 @@ window.onload = function() {
 let yVals = [];
 let xVals = [];
 
+let bgxVals = [];
+let bgyVals = [];
+
 const getFrames = () => Math.ceil(Math.random() * 60 + 60);
 
 let totFrames = [getFrames(), getFrames(), getFrames(), getFrames(), getFrames(), getFrames(), getFrames(), getFrames()];
@@ -16,15 +19,22 @@ let goals = [newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), n
 let currs = [newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal(), newGoal()];
 
 function newGoal() {
-    return [PI / (12 * Math.random() % 12),
-        PI / (12 * Math.random() % 12),
-        PI / (12 * Math.random() % 12),
-        PI / (12 * Math.random() % 12),
-        PI / (12 * Math.random() % 12),
-        PI / (12 * Math.random() % 12),
-        PI / (12 * Math.random() % 12),
-        PI / (12 * Math.random() % 12),];
+    return [(Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12,
+        (Math.round(Math.random()) ? -PI : PI) * (Math.random() * 3) / 12];
 }
+
+let octoFrame = 60;
+let goingDown = true;
+
+let c90 = "";
 
 function draw() {
     let canvas = document.getElementById("myCanvas");
@@ -37,12 +47,58 @@ function draw() {
         context.ellipse(cx, cy, d, d, 0, pi2zero ? PI : 0, pi2zero ? 0 : PI);
     const eqScale = (unitSz) => context.scale(unitSz, unitSz);
 
-    function drawBg(n = 1, degree = 10, maxH = 50, color = [0x47, 0x38, 0x8c], horizonColor = "#c6d5f1") {
-        // draw horizon
+    function drawBg(n = 1, degree = 10, maxH = 50, color = [0x47, 0x38, 0x8c]) {
+        let bgColr = 0xbd, bgColg = 0xc6, bgColb = 0xf1;
+        context.save();
+        for (let i = 0; i < height; i += 4) {
+            bgColr -= 5;
+            bgColg -= 8;
+            bgColb -= 8;
+
+            context.fillStyle = 'rgb('.concat(bgColr.toString(10), ',', bgColg.toString(10), ',',
+                bgColb.toString(10), ')');
+            if (i == 92) c90 = structuredClone(context.fillStyle);
+            context.beginPath();
+            context.rect(0, 0, width, 4);
+            context.translate(0, 4);
+            context.fill();
+        }
+        context.restore();
+
+
+        context.save();
+        context.fillStyle = c90;
+        if (bgxVals.length == 0 || bgyVals.length == 0) {
+            for (let i = 0; i < degree * 3; ++i) {
+                bgyVals.push(Math.random() * (maxH / 10));  // gets y values
+                bgxVals.push(Math.random());
+            }
+            // get x values
+            let sum = 0;
+            for (let i = 0; i < bgxVals.length; ++i) sum += bgxVals[i];
+            for (let i = 0; i < bgxVals.length; ++i) bgxVals[i] = (bgxVals[i] / sum) * width;
+        }
+
+        context.translate(0, 90);
         context.beginPath();
+        context.moveTo(0, 0);
+        for (let i = 0; i < degree * 4; ++i) {
+            context.lineTo(bgxVals[i], -bgyVals[i]);
+            context.translate(bgxVals[i], 0);
+        }
+        context.lineTo(0, height);
+        context.translate(-width, 0);
+        context.lineTo(0, height);
+        context.closePath();
+        context.fill();
+        context.restore();
+
+        // draw horizon
+        /*context.beginPath();
         context.rect(0, 90, width, height);
         context.fillStyle = horizonColor;
-        context.fill();
+        context.fill();*/
+
 
         context.save();
         context.translate(0, 150);
@@ -81,7 +137,7 @@ function draw() {
         context.restore();
     }
 
-    function drawBgWaves(period = 10, n = 1, color = [0x17, 0x38, 0x7c, 0.2]) {
+    function drawBgWaves(period = 10, n = 1, color = [0x17, 0x38, 0x7c, 0.4]) {
         let spacing = [];
         for (let i = 0, z = height / 2 - 50; i < n; ++i) {
             spacing.unshift(z / 1.5);
@@ -96,7 +152,9 @@ function draw() {
                 color[1].toString(10), ',',
                 color[2].toString(10), ',',
                 color.length > 3 ? color[3].toString() : '1.0', ')');
+            context.translate(octoFrame * ((i + 1) / (n * 5)), octoFrame / 60);
             context.save();
+
 
             context.beginPath();
             context.moveTo(-width / period, 100);
@@ -137,9 +195,6 @@ function draw() {
         context.restore();
     }
 
-    drawBg(12, 10, 50);
-    drawBgWaves(10, 7);
-
     const octo = {
         // color arrays go index [len / 2] = midtone, index < [len / 2] = highlights, index > [len / 2] = shadows
         colors : {
@@ -152,6 +207,15 @@ function draw() {
 
         drawBody : function () {
             const drawPupilAndColor = (color) => (scale) => {
+                let restoreColor = context.fillStyle;
+                context.fillStyle = color;
+                if (octoFrame >= 59) {
+                    context.fillStyle = this.colors.eyewhite;
+                }
+                drawPath(true);
+                drawPath(false);
+                context.fillStyle = restoreColor;
+
                 function drawPath(doFlip) {
                     context.save();         // [a]
                     context.beginPath();
@@ -172,32 +236,37 @@ function draw() {
                     context.restore();      // []
                 }
 
-                let restoreColor = context.fillStyle;
-                context.fillStyle = color;
-                drawPath(true);
-                drawPath(false);
-                context.fillStyle = restoreColor;
-
             }
 
             let headRadius = 35;
             let dx = headRadius * 3 / 4;
 
-            context.save();
+            if (octoFrame === 0) {
+                goingDown = false;
+            } else if (octoFrame === 60) {
+                goingDown = true;
+            }
+
+            octoFrame += (goingDown ? -1 : 1);
+
+            context.translate(0, octoFrame / 60 * 10);
 
             context.translate(width / 2, height / 2);
+            context.save();
+
             context.fillStyle = this.colors.headLow;
-            drawTentacle(0, 12, [PI / 9], 20);
-            drawTentacle(1, 12, [PI / 3, PI / 9, PI / 12, -PI / 12, PI / 3, PI / 3], 20);
-            drawTentacle(3, 12, [PI / 8, PI / 7, -PI / 6], 20);
-            drawTentacle(2, 12, [-PI / 2, -PI / 3, PI / 12, -PI / 12, PI / 3, PI / 3], 20);
+
+            drawTentacle(4, 10, 20);
+            drawTentacle(5, 10, 20);
+            drawTentacle(6, 10, 20);
+            drawTentacle(7, 10, 20);
 
             context.restore();
 
             // draw back part of head
             context.beginPath();
             context.fillStyle = this.colors.headLow;
-            context.translate(width / 2, height / 2);
+            //context.translate(width / 2, height / 2);
             context.moveTo(0, 0);
             context.quadraticCurveTo(60, -20, 100, 50);
             context.quadraticCurveTo(120, 100, 0, 60);
@@ -279,20 +348,22 @@ function draw() {
             context.translate(tentacleStartX, tentacleStartY);
             context.rotate(Math.atan(headRadius / (headRadius * 3)));
 
-            function drawTentacle(n, segments = 10, rad = [PI / 9], len = 30) {
+            function drawTentacle(n, segments = 10, len = 30) {
                 context.save();                         // [a, b, c, d]
 
                 if (0 == framesLeft[n]) {
                     const f = getFrames();
                     framesLeft[n] = f.valueOf();
                     totFrames[n] = f.valueOf();
+                    currs[n] = structuredClone(goals[n]);
+                    goals[n] = newGoal();
                 }
                 framesLeft[n] = framesLeft[n] - 1;
 
-                n = n % 4;
+                const nMod = n % 4;
                 let radIdx = 0;
                 context.beginPath();
-                context.translate(dx * n, 0);
+                context.translate(dx * nMod, 0);
                 for (let i = 0; i < segments; ++i) {
                     let shrink = 1 / segments;
                     // rotate segment
@@ -326,18 +397,23 @@ function draw() {
             }
 
 
-            drawTentacle(0, 12);
-            drawTentacle(1, 12, [PI / 3, PI / 9, PI / 12, -PI / 12, PI / 3, PI / 3]);
-            drawTentacle(3, 12, [PI / 8, PI / 7, -PI / 6]);
-            drawTentacle(2, 12, [-PI / 2, -PI / 3, PI / 12, -PI / 12, PI / 3, PI / 3]);
+            drawTentacle(0, 10);
+            drawTentacle(1, 10);
+            drawTentacle(3, 10);
+            drawTentacle(2, 10);
             context.restore();
             context.restore();
             context.restore();
+
+            context.translate(0, -octoFrame / 60 * 10);
         }
     }
 
-    octo.drawBody();
+    drawBg(12, 10, 50);
+    drawBgWaves(10, 7);
+
     //context.save();
+    octo.drawBody();
     context.translate(-width / 2, -45);
     context.moveTo(0, 0);
     drawBgWaves(10, 1, [0x87, 0x78, 0xcc, 0.5]);
